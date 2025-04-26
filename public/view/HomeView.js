@@ -91,34 +91,22 @@ export class HomeView extends AbstractView {
         }
         return list;
     }
-
+    
     createCard(item) {
         const card = document.createElement('div');
         card.className = 'col';
         card.innerHTML = `
             <div id="${item.docId}" class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header">
                     <h5 class="card-title mb-0">${item.name}</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row align-items-center mb-3">
-                        <div class="col-4 text-center">
-                            <button class="btn btn-outline-danger btn-sm minus">-</button>
-                        </div>
-                        <div class="col-4 text-center">
-                            <p class="mb-0 pt-1 qty-display">${item.qty}</p>
-                        </div>
-                        <div class="col-4 text-center">
-                            <button class="btn btn-outline-primary btn-sm plus">+</button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-6">
-                            <button class="btn btn-outline-primary btn-sm w-100 update">Update</button>
-                        </div>
-                        <div class="col-6">
-                            <button class="btn btn-outline-secondary btn-sm w-100 cancel">Cancel</button>
-                        </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <button class="btn btn-outline-danger btn-sm minus me-2">-</button>
+                        <p class="mb-0 mx-2 qty-display">${item.qty}</p>
+                        <button class="btn btn-outline-primary btn-sm plus ms-2">+</button>
+                        <button class="btn btn-outline-primary btn-sm ms-auto update">Update</button>
+                        <button class="btn btn-outline-secondary btn-sm cancel">Cancel</button>
                     </div>
                 </div>
             </div>

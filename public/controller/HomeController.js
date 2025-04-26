@@ -24,10 +24,47 @@ export class HomeController {
 
     async additemtofirebase() {
         const itemNameInput = document.getElementById('ItemName');
-        const name = itemNameInput.value.trim();
+        let name = itemNameInput.value.trim();
+        
+        // Get the button and disable it
+        const addButton = document.getElementById('addItem');
+        if (addButton) {
+            addButton.disabled = true;
+            addButton.innerHTML = 'Adding...';
+        }
+    
+        // Convert name to lowercase
+        name = name.toLowerCase();
         
         if (!name) {
             alert("Please enter an item name");
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.innerHTML = 'Create';
+            }
+            return;
+        }
+
+        if(name.length < 2) {
+            alert("Item name should be at least 2 characters");
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.innerHTML = 'Create';
+            }
+            return;
+        }
+    
+        // Check for duplicates in the current item list
+        const isDuplicate = this.model.itemList.some(item => 
+            item.name.toLowerCase() === name
+        );
+    
+        if (isDuplicate) {
+            alert("This item already exists in your inventory");
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.innerHTML = 'Create';
+            }
             return;
         }
         
@@ -57,6 +94,16 @@ export class HomeController {
             console.log('Error in adding item to firebase', e);
             alert("Error adding item: " + e.message);
         }
+        finally {
+            // Set a timeout to re-enable the button after 2 seconds
+            setTimeout(() => {
+                const addButton = document.getElementById('addItem');
+                if (addButton) {
+                    addButton.disabled = false;
+                    addButton.innerHTML = 'Create';
+                }
+            }, 2000);
+        }
     }
 
     // Only update the local display, not Firebase
@@ -65,27 +112,22 @@ export class HomeController {
         const docId = card.id;
         const item = this.model.getItemById(docId);
         
-        if (item && item.qty > 1) {
+        if (item && item.qty > 0) {
             item.qty -= 1;
             
             // Update only the display, not Firestore
             const qtyDisplay = card.querySelector('p');
             if (qtyDisplay) {
                 qtyDisplay.textContent = item.qty;
-            }
-        } else if (item && item.qty <= 1) {
-            // Show confirmation before marking for deletion
-            const confirmDelete = confirm(`Are you sure you want to delete "${item.name}" permanently?`);
-            if (confirmDelete) {
-                item.qty = 0; // Mark for deletion
                 
-                // Update only the display, not Firestore
-                const qtyDisplay = card.querySelector('p');
-                if (qtyDisplay) {
-                    qtyDisplay.textContent = '0';
+                // Optionally highlight in red if quantity reaches zero
+                if (item.qty === 0) {
                     qtyDisplay.style.color = 'red';
                 }
             }
+        } else if (item && item.qty === 0) {
+            // Show message when trying to decrease below zero
+            alert("Cannot reduce item count below zero");
         }
     }
 
@@ -115,8 +157,21 @@ export class HomeController {
         
         if (item) {
             if (item.qty <= 0) {
-                // Delete item if quantity is 0
-                await this.deleteItemFromFirebase(docId);
+                // Show confirmation before deletion when Update is pressed
+                const confirmDelete = confirm(`Are you sure you want to delete "${item.name}" permanently?`);
+                if (confirmDelete) {
+                    // Delete item if confirmed
+                    await this.deleteItemFromFirebase(docId);
+                } else {
+                    // If deletion is canceled, set quantity back to 1
+                    item.qty = 1;
+                    const qtyDisplay = card.querySelector('p');
+                    if (qtyDisplay) {
+                        qtyDisplay.textContent = item.qty;
+                        qtyDisplay.style.color = ''; // Reset color
+                    }
+                    await this.updateItemInFirebase(item);
+                }
             } else {
                 // Update item in Firebase
                 await this.updateItemInFirebase(item);
@@ -128,18 +183,71 @@ export class HomeController {
     async cancelItem(event) {
         const card = event.target.closest('.card');
         const docId = card.id;
+        const item = this.model.getItemById(docId);
         
-        // Refresh all items from Firebase to get the original values
-        await this.loadItemsFromFirebase();
+        if (item) {
+            // Reset the item to its original value from Firebase
+            try {
+                // Get the original item from Firebase
+                const originalItems = await getItemsList();
+                const originalItem = originalItems.find(i => i.docId === docId);
+                
+                if (originalItem) {
+                    // Update the local model with the original quantity
+                    item.qty = originalItem.qty;
+                    
+                    // Update the display
+                    const qtyDisplay = card.querySelector('p');
+                    if (qtyDisplay) {
+                        qtyDisplay.textContent = item.qty;
+                        qtyDisplay.style.color = ''; // Reset color
+                    }
+                    
+                    // Remove any highlighting
+                    card.classList.remove('border-warning');
+                    card.classList.remove('border-2');
+                }
+            } catch (e) {
+                console.error('Error fetching original item data', e);
+                alert("Error cancelling changes: " + e.message);
+            }
+        }
     }
 
     async updateItemInFirebase(item) {
         try {
             await updateItem(item);
-            // Refresh the view
-            if (this.view) {
-                await this.view.updateView();
-                this.view.attachEvents();
+            
+            // Find the specific card in the DOM
+            const card = document.getElementById(item.docId);
+            if (card) {
+                // Update just this specific card's appearance
+                
+                // Reset any highlights
+                card.classList.remove('border-warning');
+                card.classList.remove('border-2');
+                
+                // Update the quantity display
+                const qtyDisplay = card.querySelector('p');
+                if (qtyDisplay) {
+                    qtyDisplay.textContent = item.qty;
+                    qtyDisplay.style.color = ''; // Reset color if it was changed
+                }
+                
+                // Optionally show a brief success indicator
+                card.classList.add('border-success');
+                card.classList.add('border-2');
+                
+                // Remove success indicator after a short delay
+                setTimeout(() => {
+                    card.classList.remove('border-success');
+                    card.classList.remove('border-2');
+                }, 1000);
+            }
+            
+            // Update the initialQty in the view to track future changes
+            if (this.view && this.view.initialItemQty) {
+                this.view.initialItemQty[item.docId] = item.qty;
             }
         } catch (e) {
             console.error('Error updating item in Firebase', e);

@@ -76,7 +76,7 @@ export class HomeView extends AbstractView {
     renderItemList() {
         const list = document.createElement('div');
         list.id = 'itemList';
-        list.className = 'row row-cols-1 row-cols-md-3 g-4';
+        list.className = 'row ';
         
         if (this.controller.model.itemList.length === 0) {
             const noData = document.createElement('div');
@@ -104,9 +104,9 @@ export class HomeView extends AbstractView {
                     <div class="d-flex align-items-center mb-3">
                         <button class="btn btn-outline-danger btn-sm minus me-2">-</button>
                         <p class="mb-0 mx-2 qty-display">${item.qty}</p>
-                        <button class="btn btn-outline-primary btn-sm plus ms-2">+</button>
-                        <button class="btn btn-outline-primary btn-sm ms-auto update">Update</button>
-                        <button class="btn btn-outline-secondary btn-sm cancel">Cancel</button>
+                        <button class="btn btn-outline-primary btn-sm plus ms-2 me-1">+</button>
+                        <button class="btn btn-outline-primary btn-sm update me-0">Update</button>
+                        <button class="btn btn-outline-secondary btn-sm cancel ms-0">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -115,20 +115,20 @@ export class HomeView extends AbstractView {
     }
 
     attachEvents() {
-        const createItemBtn = document.getElementById('addItem');
-        if (createItemBtn) {
-            createItemBtn.onclick = this.controller.additemtofirebase;
-        }
-        
-        // Add enter key handler for the item name input
-        const itemNameInput = document.getElementById('ItemName');
-        if (itemNameInput) {
-            itemNameInput.onkeyup = (e) => {
-                if (e.key === 'Enter') {
-                    this.controller.additemtofirebase();
-                }
-            };
-        }
+            const createItemBtn = document.getElementById('addItem');
+            if (createItemBtn) {
+                createItemBtn.onclick = this.controller.additemtofirebase;
+            }
+            
+            // Add enter key handler for the item name input
+            const itemNameInput = document.getElementById('ItemName');
+            if (itemNameInput) {
+                itemNameInput.onkeyup = (e) => {
+                    if (e.key === 'Enter' && !document.getElementById('addItem').disabled) {
+                        this.controller.additemtofirebase();
+                    }
+                };
+            }
         
         const qtyMinus = document.querySelectorAll('.minus');
         for (const button of qtyMinus) {
